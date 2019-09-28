@@ -236,6 +236,7 @@ void cursor_handle_activity(struct sway_cursor *cursor) {
 	if ((cursor->hidden & CURSOR_HIDDEN_TYPING) != 0) {
 		cursor_unhide(cursor, CURSOR_HIDDEN_TYPING);
 	}
+	return 1;
 }
 
 static int handle_typing_unhide(void *data) {
@@ -407,7 +408,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data) {
 	if (seat_is_input_allowed(seat, surface)) {
 		wlr_seat_touch_notify_down(wlr_seat, surface, event->time_msec,
 				event->touch_id, sx, sy);
-		cursor_hide(cursor, CURSOR_HIDDEN_TOUCH_ACTIVE);
+
 	}
 }
 
@@ -947,11 +948,7 @@ struct sway_cursor *sway_cursor_create(struct sway_seat *seat) {
 
 	cursor->hide_source = wl_event_loop_add_timer(server.wl_event_loop,
 			hide_notify, cursor);
-	cursor->hide_source_typing = wl_event_loop_add_timer(server.wl_event_loop,
-			handle_typing_unhide, cursor);
 
-	wl_list_init(&cursor->image_surface_destroy.link);
-	cursor->image_surface_destroy.notify = handle_image_surface_destroy;
 
 	cursor->pointer_gestures = wlr_pointer_gestures_v1_create(server.wl_display);
 	cursor->pinch_begin.notify = handle_pointer_pinch_begin;

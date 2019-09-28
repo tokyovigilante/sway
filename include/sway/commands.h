@@ -287,6 +287,7 @@ sway_cmd seat_cmd_hide_cursor_while_typing;
 sway_cmd seat_cmd_idle_inhibit;
 sway_cmd seat_cmd_idle_wake;
 sway_cmd seat_cmd_keyboard_grouping;
+sway_cmd seat_cmd_hide_cursor_while_typing;
 sway_cmd seat_cmd_pointer_constraint;
 sway_cmd seat_cmd_xcursor_theme;
 
