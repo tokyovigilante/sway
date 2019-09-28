@@ -173,29 +173,50 @@ void cursor_rebase_all(void) {
 	}
 }
 
-static void cursor_hide(struct sway_cursor *cursor) {
-	wlr_cursor_set_image(cursor->cursor, NULL, 0, 0, 0, 0, 0, 0);
-	cursor->hidden = true;
-	wlr_seat_pointer_clear_focus(cursor->seat->wlr_seat);
-}
-
 static int hide_notify(void *data) {
 	struct sway_cursor *cursor = data;
-	cursor_hide(cursor);
+	cursor_hide(cursor, CURSOR_HIDDEN_IDLE);
 	return 1;
 }
 
-int cursor_get_timeout(struct sway_cursor *cursor) {
-	if (cursor->pressed_button_count > 0) {
-		// Do not hide cursor unless all buttons are released
-		return 0;
+void cursor_hide(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason) {
+	if (!sway_assert(reason != CURSOR_VISIBLE,
+				"Cannot hide cursor for reason CURSOR_VISIBLE")) {
+		return;
 	}
+	if (cursor->hidden == CURSOR_VISIBLE) {
+		wlr_cursor_set_image(cursor->cursor, NULL, 0, 0, 0, 0, 0, 0);
+		cursor->hidden |= reason;
+		wlr_seat_pointer_clear_focus(cursor->seat->wlr_seat);
+	} else {
+		cursor->hidden |= reason;
+	}
+}
 
+int cursor_get_timeout(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason) {
 	struct seat_config *sc = seat_get_config(cursor->seat);
 	if (!sc) {
 		sc = seat_get_config_by_name("*");
 	}
-	int timeout = sc ? sc->hide_cursor_timeout : 0;
+	int timeout = 0;
+	switch (reason) {
+	case CURSOR_VISIBLE:
+		sway_assert(false, "There should not be attempt to retrieve the "
+				"timeout for CURSOR_VISIBLE");
+		break;
+	case CURSOR_HIDDEN_IDLE:
+		if (sc) {
+			timeout = sc->hide_cursor_timeout;
+		}
+		break;
+	case CURSOR_HIDDEN_TYPING:
+		if (sc) {
+			timeout = sc->hide_cursor_typing_timeout;
+		}
+		break;
+	}
 	if (timeout < 0) {
 		timeout = 0;
 	}
@@ -203,29 +224,47 @@ int cursor_get_timeout(struct sway_cursor *cursor) {
 }
 
 void cursor_handle_activity(struct sway_cursor *cursor) {
-	wl_event_source_timer_update(
-			cursor->hide_source, cursor_get_timeout(cursor));
+	wl_event_source_timer_update(cursor->hide_source,
+			cursor_get_timeout(cursor, CURSOR_HIDDEN_IDLE));
 
 	seat_idle_notify_activity(cursor->seat, IDLE_SOURCE_POINTER);
-	if (cursor->hidden) {
-		cursor_unhide(cursor);
+	if ((cursor->hidden & CURSOR_HIDDEN_IDLE) != 0) {
+		cursor_unhide(cursor, CURSOR_HIDDEN_IDLE);
+	}
+	if ((cursor->hidden & CURSOR_HIDDEN_TYPING) != 0) {
+		cursor_unhide(cursor, CURSOR_HIDDEN_TYPING);
 	}
 }
 
-void cursor_unhide(struct sway_cursor *cursor) {
-	cursor->hidden = false;
-	if (cursor->image_surface) {
-		cursor_set_image_surface(cursor,
-				cursor->image_surface,
-				cursor->hotspot_x,
-				cursor->hotspot_y,
-				cursor->image_client);
-	} else {
-		const char *image = cursor->image;
-		cursor->image = NULL;
-		cursor_set_image(cursor, image, cursor->image_client);
+static int handle_typing_unhide(void *data) {
+	struct sway_cursor *cursor = data;
+	if ((cursor->hidden & CURSOR_HIDDEN_TYPING) != 0) {
+		cursor_unhide(cursor, CURSOR_HIDDEN_TYPING);
 	}
-	cursor_rebase(cursor);
+	return 1;
+}
+
+void cursor_unhide(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason) {
+	if (reason == CURSOR_VISIBLE) {
+		cursor->hidden = CURSOR_VISIBLE;
+	} else {
+		cursor->hidden &= ~reason;
+	}
+	if (cursor->hidden == CURSOR_VISIBLE) {
+		if (cursor->image_surface) {
+			cursor_set_image_surface(cursor,
+					cursor->image_surface,
+					cursor->hotspot_x,
+					cursor->hotspot_y,
+					cursor->image_client);
+		} else {
+			const char *image = cursor->image;
+			cursor->image = NULL;
+			cursor_set_image(cursor, image, cursor->image_client);
+		}
+		cursor_rebase(cursor);
+	}
 }
 
 static void cursor_motion(struct sway_cursor *cursor, uint32_t time_msec,
@@ -303,6 +342,7 @@ void dispatch_cursor_button(struct sway_cursor *cursor,
 static void handle_cursor_button(struct wl_listener *listener, void *data) {
 	struct sway_cursor *cursor = wl_container_of(listener, cursor, button);
 	struct wlr_event_pointer_button *event = data;
+	cursor_handle_activity(cursor);
 
 	if (event->state == WLR_BUTTON_PRESSED) {
 		cursor->pressed_button_count++;
@@ -314,7 +354,6 @@ static void handle_cursor_button(struct wl_listener *listener, void *data) {
 		}
 	}
 
-	cursor_handle_activity(cursor);
 	dispatch_cursor_button(cursor, event->device,
 			event->time_msec, event->button, event->state);
 	transaction_commit_dirty();
@@ -366,7 +405,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data) {
 	if (seat_is_input_allowed(seat, surface)) {
 		wlr_seat_touch_notify_down(wlr_seat, surface, event->time_msec,
 				event->touch_id, sx, sy);
-		cursor_hide(cursor);
+		cursor_set_image(cursor, NULL, NULL);
 	}
 }
 
@@ -821,7 +860,7 @@ void cursor_set_image(struct sway_cursor *cursor, const char *image,
 	cursor->hotspot_x = cursor->hotspot_y = 0;
 	cursor->image_client = client;
 
-	if (cursor->hidden) {
+	if (cursor->hidden != CURSOR_VISIBLE) {
 		return;
 	}
 
@@ -846,7 +885,7 @@ void cursor_set_image_surface(struct sway_cursor *cursor,
 	cursor->hotspot_y = hotspot_y;
 	cursor->image_client = client;
 
-	if (cursor->hidden) {
+	if (cursor->hidden != CURSOR_VISIBLE) {
 		return;
 	}
 
@@ -859,6 +898,7 @@ void sway_cursor_destroy(struct sway_cursor *cursor) {
 	}
 
 	wl_event_source_remove(cursor->hide_source);
+	wl_event_source_remove(cursor->hide_source_typing);
 
 	wl_list_remove(&cursor->image_surface_destroy.link);
 	wl_list_remove(&cursor->pinch_begin.link);
@@ -905,6 +945,8 @@ struct sway_cursor *sway_cursor_create(struct sway_seat *seat) {
 
 	cursor->hide_source = wl_event_loop_add_timer(server.wl_event_loop,
 			hide_notify, cursor);
+	cursor->hide_source_typing = wl_event_loop_add_timer(server.wl_event_loop,
+			handle_typing_unhide, cursor);
 
 	wl_list_init(&cursor->image_surface_destroy.link);
 	cursor->image_surface_destroy.notify = handle_image_surface_destroy;

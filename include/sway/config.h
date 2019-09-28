@@ -198,7 +198,8 @@ struct seat_config {
 	char *name;
 	int fallback; // -1 means not set
 	list_t *attachments; // list of seat_attachment configs
-	int hide_cursor_timeout;
+	int hide_cursor_timeout;  // idle timeout
+	int hide_cursor_typing_timeout;
 	enum seat_config_allow_constrain allow_constrain;
 	enum seat_keyboard_grouping keyboard_grouping;
 	uint32_t idle_inhibit_sources, idle_wake_sources;
