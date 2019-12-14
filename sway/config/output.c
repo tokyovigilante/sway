@@ -276,7 +276,7 @@ static bool phys_size_is_aspect_ratio(struct wlr_output *output) {
 }
 
 // The minimum DPI at which we turn on a scale of 2
-#define HIDPI_DPI_LIMIT (2 * 96)
+#define HIDPI_DPI_LIMIT 180
 // The minimum screen height at which we turn on a scale of 2
 #define HIDPI_MIN_HEIGHT 1200
 // 1 inch = 25.4 mm
