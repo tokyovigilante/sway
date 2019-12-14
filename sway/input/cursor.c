@@ -216,6 +216,8 @@ int cursor_get_timeout(struct sway_cursor *cursor,
 			timeout = sc->hide_cursor_typing_timeout;
 		}
 		break;
+	case CURSOR_HIDDEN_TOUCH_ACTIVE:
+		break;
 	}
 	if (timeout < 0) {
 		timeout = 0;
@@ -405,7 +407,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data) {
 	if (seat_is_input_allowed(seat, surface)) {
 		wlr_seat_touch_notify_down(wlr_seat, surface, event->time_msec,
 				event->touch_id, sx, sy);
-		cursor_set_image(cursor, NULL, NULL);
+		cursor_hide(cursor, CURSOR_HIDDEN_TOUCH_ACTIVE);
 	}
 }
 

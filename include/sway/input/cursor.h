@@ -18,6 +18,7 @@ enum sway_cursor_hidden_reason {
 	CURSOR_VISIBLE = 0,
 	CURSOR_HIDDEN_IDLE = 1,
 	CURSOR_HIDDEN_TYPING = 2,
+	CURSOR_HIDDEN_TOUCH_ACTIVE = 3,
 };
 
 struct sway_cursor {
