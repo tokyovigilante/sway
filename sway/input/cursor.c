@@ -408,7 +408,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data) {
 	if (seat_is_input_allowed(seat, surface)) {
 		wlr_seat_touch_notify_down(wlr_seat, surface, event->time_msec,
 				event->touch_id, sx, sy);
-
+		cursor_hide(cursor, CURSOR_HIDDEN_TOUCH_ACTIVE);
 	}
 }
 
