@@ -74,6 +74,8 @@ static void scissor_output(struct wlr_output *wlr_output,
 
 static void set_scale_filter(struct wlr_output *wlr_output,
 		struct wlr_texture *texture, enum scale_filter_mode scale_filter) {
+	return;
+	/*
 	if (!wlr_texture_is_gles2(texture)) {
 		return;
 	}
@@ -93,7 +95,7 @@ static void set_scale_filter(struct wlr_output *wlr_output,
 	case SCALE_FILTER_DEFAULT:
 	case SCALE_FILTER_SMART:
 		assert(false); // unreachable
-	}
+	}*/
 }
 
 static void render_texture(struct wlr_output *wlr_output,
