@@ -18,6 +18,7 @@ static struct cmd_handler seat_handlers[] = {
 	{ "attach", seat_cmd_attach },
 	{ "fallback", seat_cmd_fallback },
 	{ "hide_cursor", seat_cmd_hide_cursor },
+	{ "hide_cursor_while_typing", seat_cmd_hide_cursor_while_typing },
 	{ "idle_inhibit", seat_cmd_idle_inhibit },
 	{ "idle_wake", seat_cmd_idle_wake },
 	{ "keyboard_grouping", seat_cmd_keyboard_grouping },

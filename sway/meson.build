@@ -91,6 +91,7 @@ sway_sources = files(
 	'commands/seat/cursor.c',
 	'commands/seat/fallback.c',
 	'commands/seat/hide_cursor.c',
+	'commands/seat/hide_cursor_while_typing.c',
 	'commands/seat/idle.c',
 	'commands/seat/keyboard_grouping.c',
 	'commands/seat/pointer_constraint.c',

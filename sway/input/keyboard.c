@@ -11,6 +11,7 @@
 #include "sway/commands.h"
 #include "sway/desktop/transaction.h"
 #include "sway/input/input-manager.h"
+#include "sway/input/cursor.h"
 #include "sway/input/keyboard.h"
 #include "sway/input/seat.h"
 #include "sway/ipc-server.h"
@@ -493,6 +494,11 @@ static void handle_key_event(struct sway_keyboard *keyboard,
 			wlr_seat_keyboard_notify_key(wlr_seat, event->time_msec,
 					event->keycode, event->state);
 		}
+	}
+
+	// Handle hiding the cursor while typing
+	if (event->state == WLR_KEY_PRESSED) {
+		cursor_hide(seat->cursor, CURSOR_HIDDEN_TYPING);
 	}
 
 	transaction_commit_dirty();

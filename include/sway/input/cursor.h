@@ -14,6 +14,13 @@
 #define SWAY_SCROLL_LEFT KEY_MAX + 3
 #define SWAY_SCROLL_RIGHT KEY_MAX + 4
 
+enum sway_cursor_hidden_reason {
+	CURSOR_VISIBLE = 0,
+	CURSOR_HIDDEN_IDLE = 1,
+	CURSOR_HIDDEN_TYPING = 2,
+	CURSOR_HIDDEN_TOUCH_ACTIVE = 4,
+};
+
 struct sway_cursor {
 	struct sway_seat *seat;
 	struct wlr_cursor *cursor;
@@ -67,7 +74,8 @@ struct sway_cursor {
 	struct wl_listener constraint_commit;
 
 	struct wl_event_source *hide_source;
-	bool hidden;
+	struct wl_event_source *hide_source_typing;
+	uint32_t hidden;  // bitfield of enum sway_cursor_hidden_reason
 
 	size_t pressed_button_count;
 };
@@ -92,7 +100,16 @@ void cursor_update_image(struct sway_cursor *cursor, struct sway_node *node);
 
 void cursor_handle_activity(struct sway_cursor *cursor,
 		struct wlr_input_device *device);
-void cursor_unhide(struct sway_cursor *cursor);
+
+void cursor_hide(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason);
+
+// Removes the cursor hidden reason and if all reasons are removed, unhides the
+// cursor. If CURSOR_VISIBLE is given as the reason, all reasons will be
+// removed and the cursor will be unhidden.
+void cursor_unhide(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason);
+
 int cursor_get_timeout(struct sway_cursor *cursor);
 
 void dispatch_cursor_button(struct sway_cursor *cursor,

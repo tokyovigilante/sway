@@ -224,15 +224,24 @@ void cursor_update_image(struct sway_cursor *cursor,
 	}
 }
 
-static void cursor_hide(struct sway_cursor *cursor) {
-	wlr_cursor_set_image(cursor->cursor, NULL, 0, 0, 0, 0, 0, 0);
-	cursor->hidden = true;
-	wlr_seat_pointer_notify_clear_focus(cursor->seat->wlr_seat);
+void cursor_hide(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason) {
+	if (!sway_assert(reason != CURSOR_VISIBLE,
+				"Cannot hide cursor for reason CURSOR_VISIBLE")) {
+		return;
+	}
+	if (cursor->hidden == CURSOR_VISIBLE) {
+		wlr_cursor_set_image(cursor->cursor, NULL, 0, 0, 0, 0, 0, 0);
+		cursor->hidden |= reason;
+		wlr_seat_pointer_clear_focus(cursor->seat->wlr_seat);
+	} else {
+		cursor->hidden |= reason;
+	}
 }
 
 static int hide_notify(void *data) {
 	struct sway_cursor *cursor = data;
-	cursor_hide(cursor);
+	cursor_hide(cursor, CURSOR_HIDDEN_IDLE);
 	return 1;
 }
 
@@ -281,24 +290,31 @@ void cursor_handle_activity(struct sway_cursor *cursor,
 	enum sway_input_idle_source idle_source = idle_source_from_device(device);
 	seat_idle_notify_activity(cursor->seat, idle_source);
 	if (cursor->hidden && idle_source != IDLE_SOURCE_TOUCH) {
-		cursor_unhide(cursor);
+		cursor_unhide(cursor, CURSOR_VISIBLE);
 	}
 }
 
-void cursor_unhide(struct sway_cursor *cursor) {
-	cursor->hidden = false;
-	if (cursor->image_surface) {
-		cursor_set_image_surface(cursor,
-				cursor->image_surface,
-				cursor->hotspot_x,
-				cursor->hotspot_y,
-				cursor->image_client);
+void cursor_unhide(struct sway_cursor *cursor,
+		enum sway_cursor_hidden_reason reason) {
+	if (reason == CURSOR_VISIBLE) {
+		cursor->hidden = CURSOR_VISIBLE;
 	} else {
-		const char *image = cursor->image;
-		cursor->image = NULL;
-		cursor_set_image(cursor, image, cursor->image_client);
+		cursor->hidden &= ~reason;
 	}
-	cursor_rebase(cursor);
+	if (cursor->hidden == CURSOR_VISIBLE) {
+		if (cursor->image_surface) {
+			cursor_set_image_surface(cursor,
+					cursor->image_surface,
+					cursor->hotspot_x,
+					cursor->hotspot_y,
+					cursor->image_client);
+		} else {
+			const char *image = cursor->image;
+			cursor->image = NULL;
+			cursor_set_image(cursor, image, cursor->image_client);
+		}
+		cursor_rebase(cursor);
+	}
 }
 
 static void pointer_motion(struct sway_cursor *cursor, uint32_t time_msec,
@@ -416,7 +432,7 @@ static void handle_touch_down(struct wl_listener *listener, void *data) {
 	struct sway_cursor *cursor = wl_container_of(listener, cursor, touch_down);
 	struct wlr_event_touch_down *event = data;
 	cursor_handle_activity(cursor, event->device);
-	cursor_hide(cursor);
+	cursor_hide(cursor, CURSOR_HIDDEN_TOUCH_ACTIVE);
 
 	struct sway_seat *seat = cursor->seat;
 	struct wlr_seat *wlr_seat = seat->wlr_seat;
@@ -956,7 +972,7 @@ void cursor_set_image(struct sway_cursor *cursor, const char *image,
 	cursor->hotspot_x = cursor->hotspot_y = 0;
 	cursor->image_client = client;
 
-	if (cursor->hidden) {
+	if (cursor->hidden != CURSOR_VISIBLE) {
 		return;
 	}
 
@@ -981,7 +997,7 @@ void cursor_set_image_surface(struct sway_cursor *cursor,
 	cursor->hotspot_y = hotspot_y;
 	cursor->image_client = client;
 
-	if (cursor->hidden) {
+	if (cursor->hidden != CURSOR_VISIBLE) {
 		return;
 	}
 

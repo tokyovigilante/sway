@@ -207,6 +207,7 @@ struct seat_config {
 	int fallback; // -1 means not set
 	list_t *attachments; // list of seat_attachment configs
 	int hide_cursor_timeout;
+	bool hide_cursor_typing;
 	enum seat_config_allow_constrain allow_constrain;
 	enum seat_config_shortcuts_inhibit shortcuts_inhibit;
 	enum seat_keyboard_grouping keyboard_grouping;

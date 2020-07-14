@@ -285,6 +285,7 @@ sway_cmd seat_cmd_attach;
 sway_cmd seat_cmd_cursor;
 sway_cmd seat_cmd_fallback;
 sway_cmd seat_cmd_hide_cursor;
+sway_cmd seat_cmd_hide_cursor_while_typing;
 sway_cmd seat_cmd_idle_inhibit;
 sway_cmd seat_cmd_idle_wake;
 sway_cmd seat_cmd_keyboard_grouping;
